@@ -18,30 +18,23 @@ namespace SoundKeyboard2012
     {
         private KeyboardHookListener keyboard_listener;
 
-        public string SoundPackName = string.Empty;
+        private readonly string SoundPackPath;
+        private string[] SoundPackList = null;
 
-        public string SoundPackPath = string.Empty;
-
-        public string[] SoundPackList = null;
-
-        public Dictionary<string, SoundPlayer> Sounds = new Dictionary<string, SoundPlayer>();
+        private SoundEndine engine = null;
 
         public void BuildSounds(string name)
         {
-            SoundPackName = name;
+            var path = Path.Combine(SoundPackPath, name);
 
-            SoundPackPath = Path.Combine(Application.StartupPath, "Sounds", SoundPackName);
+            if (engine != null) engine.Dispose();
 
-            Sounds = new DirectoryInfo(SoundPackPath)
-                .EnumerateFiles()
-                .Where(_ => _.Extension == ".wav")
-                .Select(_ => new SoundPlayer(_.FullName))
-                .ToDictionary(_ => Path.GetFileNameWithoutExtension(_.SoundLocation));
+            engine = new SoundEndine(path);
         }
 
         public void BuildSoundsList()
         {
-            SoundPackList = new DirectoryInfo(Path.Combine(Application.StartupPath, "Sounds"))
+            SoundPackList = new DirectoryInfo(SoundPackPath)
                 .GetDirectories()
                 .Select(_ => _.Name)
                 .ToArray();
@@ -51,20 +44,7 @@ namespace SoundKeyboard2012
         {
             InitializeComponent();
 
-            BuildSoundsList();
-            BuildSounds("alpha");
-
-            comboBox1.DataSource = SoundPackList;
-
-            comboBox1.SelectedIndexChanged += (_1, _2) =>
-            {
-                BuildSounds(comboBox1.SelectedItem.ToString());
-            };
-
-            buttonReload.Click += (_1, _2) =>
-            {
-                BuildSoundsList();
-            };
+            SoundPackPath = Path.Combine(Application.StartupPath, "Sounds");
 
             Load += new EventHandler(MainForm_Load);
             FormClosed += new FormClosedEventHandler(MainForm_FormClosed);
@@ -72,6 +52,21 @@ namespace SoundKeyboard2012
 
         void MainForm_Load(object sender, EventArgs e)
         {
+            BuildSoundsList();
+            BuildSounds("alpha");
+
+            comboBox1.DataSource = SoundPackList;
+
+            comboBox1.SelectedIndexChanged += (_sebder, _e) =>
+            {
+                BuildSounds(comboBox1.SelectedItem.ToString());
+            };
+
+            buttonReload.Click += (_sebder, _e) =>
+            {
+                BuildSoundsList();
+            };
+
             keyboard_listener = new KeyboardHookListener(new GlobalHooker())
             {
                 Enabled = true,
@@ -79,11 +74,9 @@ namespace SoundKeyboard2012
 
             keyboard_listener.KeyDown += (_sender, _e) =>
             {
-                var key = _e.KeyData.ToString();
+                labelKeyData.Text = _e.KeyData.ToString();
 
-                labelKeyData.Text = key;
-
-                if (Sounds.Keys.Contains(key)) Sounds[key].Play();
+                engine.Play(_e.KeyData);
             };
 
             keyboard_listener.KeyUp += (_sender, _e) =>
