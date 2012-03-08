@@ -19,8 +19,26 @@ namespace SoundKeyboard2012
         private KeyboardHookListener keyboard_listener;
         private bool CanClose = false;
 
-        private readonly string SoundPackPath;
+        private SoundPackList list;
         private SoundEndine engine = null;
+
+        private event EventHandler IsMuteChanged;
+        private bool is_mute = false;
+
+        private bool IsMute
+        {
+            get { return is_mute; }
+            set
+            {
+                if (IsMute != value)
+                {
+                    is_mute = value;
+
+                    if (IsMuteChanged != null)
+                        IsMuteChanged(this, EventArgs.Empty);
+                }
+            }
+        }
 
         private const int BaloonTimeout = 3000;
 
@@ -28,11 +46,23 @@ namespace SoundKeyboard2012
         {
             InitializeComponent();
 
-            SoundPackPath = Path.Combine(Application.StartupPath, "Sounds");
-
             Load += new EventHandler(MainForm_Load);
             FormClosed += new FormClosedEventHandler(MainForm_FormClosed);
             FormClosing += new FormClosingEventHandler(MainForm_FormClosing);
+
+            IsMuteChanged += (_sender, _e) =>
+            {
+                menuItemIsMute.Checked = IsMute;
+
+                notifyIcon.ShowBalloonTip(
+                    BaloonTimeout,
+                    Application.ProductName,
+                    string.Format(
+                        "ミュートを {0} にしました",
+                        IsMute? "有効" : "無効"),
+                    ToolTipIcon.Info
+                );
+            };
         }
 
         void MainForm_Load(object sender, EventArgs e)
@@ -46,6 +76,11 @@ namespace SoundKeyboard2012
                 Show();
             };
 
+            menuItemIsMute.Click += (_sender, _e) =>
+            {
+                IsMute = !IsMute;
+            };
+
             menuItemExit.Click += (_sender, _e) =>
             {
                 CanClose = true; Close();
@@ -55,13 +90,42 @@ namespace SoundKeyboard2012
 
             comboBoxSoundPacks.SelectedIndexChanged += (_sebder, _e) =>
             {
-                var path = Path.Combine(
-                    SoundPackPath,
-                    comboBoxSoundPacks.SelectedItem.ToString());
+                list.SelectedIndex = comboBoxSoundPacks.SelectedIndex;
+            };
 
+            buttonReloadSoundPacks.Click += (_sebder, _e) =>
+            {
+                list.Load();
+            };
+
+            // 03. Load SoundPack List & SoundEngine
+
+            list = new SoundPackList(
+                Path.Combine(Application.StartupPath, "Sounds")
+            );
+
+            list.Loaded += (_sender, _e) =>
+            {
+                comboBoxSoundPacks.DataSource = list.Select(_ => _.Name).ToList();
+
+                menuItemChangeSoundPacks.DropDown = new ToolStripDropDown();
+
+                foreach (var pack in list)
+                {
+                    var item = menuItemChangeSoundPacks.DropDown.Items.Add(pack.Name);
+
+                    item.Click += (_1, _2) =>
+                    {
+                        list.SelectedName = item.Text;
+                    };
+                }
+            };
+
+            list.SelectIndexChanged += (_sender, _e) =>
+            {
                 if (engine != null) engine.Dispose();
 
-                engine = new SoundEndine(path);
+                engine = SoundEndine.FromSoundPack(list.SelectedItem);
 
                 notifyIcon.ShowBalloonTip(
                     BaloonTimeout,
@@ -69,26 +133,12 @@ namespace SoundKeyboard2012
                     string.Format("サウンドパック {0} をロードしました", engine.Name),
                     ToolTipIcon.Info
                 );
+
+                comboBoxSoundPacks.SelectedIndex = list.SelectedIndex;
             };
 
-            buttonReloadSoundPacks.Click += (_sebder, _e) =>
-            {
-                comboBoxSoundPacks.DataSource = new DirectoryInfo(SoundPackPath)
-                    .GetDirectories()
-                    .Select(_ => _.Name)
-                    .ToArray();
-            };
-
-            // 03. Load SoundPack List & SoundEngine (must be after 02.)
-            
-            /* load soundpack list */
-            buttonReloadSoundPacks.PerformClick();
-
-            /* load a soundengine  */
-            if (comboBoxSoundPacks.Items.Count > 0)
-                comboBoxSoundPacks.SelectedIndex = 0;
-            else
-                throw new Exception("サウンドパックが見つかりません");
+            list.Load();
+            list.SelectedIndex = 0; /* for load sound engine */
 
             // 04. Keyboard Listener Initialization
 
@@ -101,12 +151,19 @@ namespace SoundKeyboard2012
             {
                 labelKeyData.Text = _e.KeyData.ToString();
 
-                engine.Play(_e.KeyData);
+                if (!IsMute) engine.Play(_e.KeyData);
+
+                if (_e.KeyData == Keys.M &&
+                    Keys.Shift == (Control.ModifierKeys & Keys.Shift) &&
+                    Keys.Control == (Control.ModifierKeys & Keys.Control))
+                    IsMute = !IsMute;
             };
 
             keyboard_listener.KeyUp += (_sender, _e) =>
             {
-                // labelKeyData.Text = string.Empty;
+                /* On Modifier Key */
+                if (SoundEndine.IsModifierKey(_e.KeyData))
+                    engine.ObsoluteKeys.Remove(_e.KeyData);
             };
         }
 
@@ -114,7 +171,7 @@ namespace SoundKeyboard2012
         {
             if (CanClose)
             {
-                e.Cancel = false;
+                e.Cancel = false; /* only called from menu */
             }
             else
             {

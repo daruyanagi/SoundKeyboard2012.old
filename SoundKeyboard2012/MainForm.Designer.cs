@@ -35,9 +35,12 @@
             this.buttonReloadSoundPacks = new System.Windows.Forms.Button();
             this.notifyIcon = new System.Windows.Forms.NotifyIcon(this.components);
             this.contextMenuStrip = new System.Windows.Forms.ContextMenuStrip(this.components);
-            this.menuItemExit = new System.Windows.Forms.ToolStripMenuItem();
             this.menuItemSettings = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuItemChangeSoundPacks = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
+            this.menuItemExit = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuItemIsMute = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.contextMenuStrip.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -84,27 +87,47 @@
             // 
             this.contextMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.menuItemSettings,
+            this.menuItemChangeSoundPacks,
             this.toolStripSeparator1,
+            this.menuItemIsMute,
+            this.toolStripSeparator2,
             this.menuItemExit});
             this.contextMenuStrip.Name = "contextMenuStrip";
-            this.contextMenuStrip.Size = new System.Drawing.Size(179, 54);
-            // 
-            // menuItemExit
-            // 
-            this.menuItemExit.Name = "menuItemExit";
-            this.menuItemExit.Size = new System.Drawing.Size(178, 22);
-            this.menuItemExit.Text = "終了(&X)";
+            this.contextMenuStrip.Size = new System.Drawing.Size(233, 126);
             // 
             // menuItemSettings
             // 
             this.menuItemSettings.Name = "menuItemSettings";
-            this.menuItemSettings.Size = new System.Drawing.Size(178, 22);
+            this.menuItemSettings.Size = new System.Drawing.Size(232, 22);
             this.menuItemSettings.Text = "設定画面を表示(&S)";
+            // 
+            // menuItemChangeSoundPacks
+            // 
+            this.menuItemChangeSoundPacks.Name = "menuItemChangeSoundPacks";
+            this.menuItemChangeSoundPacks.Size = new System.Drawing.Size(232, 22);
+            this.menuItemChangeSoundPacks.Text = "サウンドエンジンの切り替え";
             // 
             // toolStripSeparator1
             // 
             this.toolStripSeparator1.Name = "toolStripSeparator1";
-            this.toolStripSeparator1.Size = new System.Drawing.Size(175, 6);
+            this.toolStripSeparator1.Size = new System.Drawing.Size(229, 6);
+            // 
+            // menuItemExit
+            // 
+            this.menuItemExit.Name = "menuItemExit";
+            this.menuItemExit.Size = new System.Drawing.Size(232, 22);
+            this.menuItemExit.Text = "終了(&X)";
+            // 
+            // menuItemIsMute
+            // 
+            this.menuItemIsMute.Name = "menuItemIsMute";
+            this.menuItemIsMute.Size = new System.Drawing.Size(232, 22);
+            this.menuItemIsMute.Text = "ミュート(&M)";
+            // 
+            // toolStripSeparator2
+            // 
+            this.toolStripSeparator2.Name = "toolStripSeparator2";
+            this.toolStripSeparator2.Size = new System.Drawing.Size(229, 6);
             // 
             // MainForm
             // 
@@ -119,7 +142,6 @@
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.Name = "MainForm";
-            this.Opacity = 0.75D;
             this.Text = "SoundKeyboard 2012";
             this.TopMost = true;
             this.contextMenuStrip.ResumeLayout(false);
@@ -137,6 +159,9 @@
         private System.Windows.Forms.ToolStripMenuItem menuItemSettings;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
         private System.Windows.Forms.ToolStripMenuItem menuItemExit;
+        private System.Windows.Forms.ToolStripMenuItem menuItemChangeSoundPacks;
+        private System.Windows.Forms.ToolStripMenuItem menuItemIsMute;
+        private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
     }
 }
 
