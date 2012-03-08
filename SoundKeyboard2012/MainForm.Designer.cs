@@ -28,9 +28,17 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             this.labelKeyData = new System.Windows.Forms.Label();
-            this.comboBox1 = new System.Windows.Forms.ComboBox();
-            this.buttonReload = new System.Windows.Forms.Button();
+            this.comboBoxSoundPacks = new System.Windows.Forms.ComboBox();
+            this.buttonReloadSoundPacks = new System.Windows.Forms.Button();
+            this.notifyIcon = new System.Windows.Forms.NotifyIcon(this.components);
+            this.contextMenuStrip = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.menuItemExit = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuItemSettings = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
+            this.contextMenuStrip.SuspendLayout();
             this.SuspendLayout();
             // 
             // labelKeyData
@@ -45,25 +53,58 @@
             this.labelKeyData.TabIndex = 0;
             this.labelKeyData.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
-            // comboBox1
+            // comboBoxSoundPacks
             // 
-            this.comboBox1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            this.comboBoxSoundPacks.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.comboBox1.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox1.FormattingEnabled = true;
-            this.comboBox1.Location = new System.Drawing.Point(20, 212);
-            this.comboBox1.Name = "comboBox1";
-            this.comboBox1.Size = new System.Drawing.Size(271, 26);
-            this.comboBox1.TabIndex = 1;
+            this.comboBoxSoundPacks.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboBoxSoundPacks.FormattingEnabled = true;
+            this.comboBoxSoundPacks.Location = new System.Drawing.Point(20, 212);
+            this.comboBoxSoundPacks.Name = "comboBoxSoundPacks";
+            this.comboBoxSoundPacks.Size = new System.Drawing.Size(271, 26);
+            this.comboBoxSoundPacks.TabIndex = 1;
             // 
-            // buttonReload
+            // buttonReloadSoundPacks
             // 
-            this.buttonReload.Location = new System.Drawing.Point(297, 212);
-            this.buttonReload.Name = "buttonReload";
-            this.buttonReload.Size = new System.Drawing.Size(75, 26);
-            this.buttonReload.TabIndex = 2;
-            this.buttonReload.Text = "更新";
-            this.buttonReload.UseVisualStyleBackColor = true;
+            this.buttonReloadSoundPacks.Location = new System.Drawing.Point(297, 212);
+            this.buttonReloadSoundPacks.Name = "buttonReloadSoundPacks";
+            this.buttonReloadSoundPacks.Size = new System.Drawing.Size(75, 26);
+            this.buttonReloadSoundPacks.TabIndex = 2;
+            this.buttonReloadSoundPacks.Text = "更新";
+            this.buttonReloadSoundPacks.UseVisualStyleBackColor = true;
+            // 
+            // notifyIcon
+            // 
+            this.notifyIcon.ContextMenuStrip = this.contextMenuStrip;
+            this.notifyIcon.Icon = ((System.Drawing.Icon)(resources.GetObject("notifyIcon.Icon")));
+            this.notifyIcon.Text = "notifyIcon1";
+            this.notifyIcon.Visible = true;
+            // 
+            // contextMenuStrip
+            // 
+            this.contextMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.menuItemSettings,
+            this.toolStripSeparator1,
+            this.menuItemExit});
+            this.contextMenuStrip.Name = "contextMenuStrip";
+            this.contextMenuStrip.Size = new System.Drawing.Size(179, 54);
+            // 
+            // menuItemExit
+            // 
+            this.menuItemExit.Name = "menuItemExit";
+            this.menuItemExit.Size = new System.Drawing.Size(178, 22);
+            this.menuItemExit.Text = "終了(&X)";
+            // 
+            // menuItemSettings
+            // 
+            this.menuItemSettings.Name = "menuItemSettings";
+            this.menuItemSettings.Size = new System.Drawing.Size(178, 22);
+            this.menuItemSettings.Text = "設定画面を表示(&S)";
+            // 
+            // toolStripSeparator1
+            // 
+            this.toolStripSeparator1.Name = "toolStripSeparator1";
+            this.toolStripSeparator1.Size = new System.Drawing.Size(175, 6);
             // 
             // MainForm
             // 
@@ -71,8 +112,8 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.Window;
             this.ClientSize = new System.Drawing.Size(384, 262);
-            this.Controls.Add(this.buttonReload);
-            this.Controls.Add(this.comboBox1);
+            this.Controls.Add(this.buttonReloadSoundPacks);
+            this.Controls.Add(this.comboBoxSoundPacks);
             this.Controls.Add(this.labelKeyData);
             this.Font = new System.Drawing.Font("メイリオ", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
@@ -81,6 +122,7 @@
             this.Opacity = 0.75D;
             this.Text = "SoundKeyboard 2012";
             this.TopMost = true;
+            this.contextMenuStrip.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -88,8 +130,13 @@
         #endregion
 
         private System.Windows.Forms.Label labelKeyData;
-        private System.Windows.Forms.ComboBox comboBox1;
-        private System.Windows.Forms.Button buttonReload;
+        private System.Windows.Forms.ComboBox comboBoxSoundPacks;
+        private System.Windows.Forms.Button buttonReloadSoundPacks;
+        private System.Windows.Forms.NotifyIcon notifyIcon;
+        private System.Windows.Forms.ContextMenuStrip contextMenuStrip;
+        private System.Windows.Forms.ToolStripMenuItem menuItemSettings;
+        private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
+        private System.Windows.Forms.ToolStripMenuItem menuItemExit;
     }
 }
 

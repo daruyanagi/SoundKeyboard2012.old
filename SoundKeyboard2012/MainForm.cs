@@ -17,28 +17,12 @@ namespace SoundKeyboard2012
     public partial class MainForm : Form
     {
         private KeyboardHookListener keyboard_listener;
+        private bool CanClose = false;
 
         private readonly string SoundPackPath;
-        private string[] SoundPackList = null;
-
         private SoundEndine engine = null;
 
-        public void BuildSounds(string name)
-        {
-            var path = Path.Combine(SoundPackPath, name);
-
-            if (engine != null) engine.Dispose();
-
-            engine = new SoundEndine(path);
-        }
-
-        public void BuildSoundsList()
-        {
-            SoundPackList = new DirectoryInfo(SoundPackPath)
-                .GetDirectories()
-                .Select(_ => _.Name)
-                .ToArray();
-        }
+        private const int BaloonTimeout = 3000;
 
         public MainForm()
         {
@@ -48,24 +32,65 @@ namespace SoundKeyboard2012
 
             Load += new EventHandler(MainForm_Load);
             FormClosed += new FormClosedEventHandler(MainForm_FormClosed);
+            FormClosing += new FormClosingEventHandler(MainForm_FormClosing);
         }
 
         void MainForm_Load(object sender, EventArgs e)
         {
-            BuildSoundsList();
-            BuildSounds("alpha");
+            // 01. NotifyIcon Initialization
 
-            comboBox1.DataSource = SoundPackList;
+            notifyIcon.Text = Application.ProductName;
 
-            comboBox1.SelectedIndexChanged += (_sebder, _e) =>
+            menuItemSettings.Click += (_sender, _e) =>
             {
-                BuildSounds(comboBox1.SelectedItem.ToString());
+                Show();
             };
 
-            buttonReload.Click += (_sebder, _e) =>
+            menuItemExit.Click += (_sender, _e) =>
             {
-                BuildSoundsList();
+                CanClose = true; Close();
             };
+
+            // 02. Prepare Event for Combobox & Reload Button
+
+            comboBoxSoundPacks.SelectedIndexChanged += (_sebder, _e) =>
+            {
+                var path = Path.Combine(
+                    SoundPackPath,
+                    comboBoxSoundPacks.SelectedItem.ToString());
+
+                if (engine != null) engine.Dispose();
+
+                engine = new SoundEndine(path);
+
+                notifyIcon.ShowBalloonTip(
+                    BaloonTimeout,
+                    Application.ProductName,
+                    string.Format("サウンドパック {0} をロードしました", engine.Name),
+                    ToolTipIcon.Info
+                );
+            };
+
+            buttonReloadSoundPacks.Click += (_sebder, _e) =>
+            {
+                comboBoxSoundPacks.DataSource = new DirectoryInfo(SoundPackPath)
+                    .GetDirectories()
+                    .Select(_ => _.Name)
+                    .ToArray();
+            };
+
+            // 03. Load SoundPack List & SoundEngine (must be after 02.)
+            
+            /* load soundpack list */
+            buttonReloadSoundPacks.PerformClick();
+
+            /* load a soundengine  */
+            if (comboBoxSoundPacks.Items.Count > 0)
+                comboBoxSoundPacks.SelectedIndex = 0;
+            else
+                throw new Exception("サウンドパックが見つかりません");
+
+            // 04. Keyboard Listener Initialization
 
             keyboard_listener = new KeyboardHookListener(new GlobalHooker())
             {
@@ -83,6 +108,27 @@ namespace SoundKeyboard2012
             {
                 // labelKeyData.Text = string.Empty;
             };
+        }
+
+        void MainForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (CanClose)
+            {
+                e.Cancel = false;
+            }
+            else
+            {
+                e.Cancel = true;
+                Hide();
+
+                notifyIcon.ShowBalloonTip(
+                    BaloonTimeout,
+                    Application.ProductName,
+                    "最小化しました。" + "\r\n" +
+                    "終了するにはタスクトレイアイコンのコンテクストメニューを利用します",
+                    ToolTipIcon.Info
+                );
+            }
         }
 
         void MainForm_FormClosed(object sender, FormClosedEventArgs e)

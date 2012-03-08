@@ -11,9 +11,7 @@ namespace SoundKeyboard2012
 {
     public class SoundEndine : IDisposable
     {
-        public string Location { get; private set; }
-
-        private Dictionary<string, SoundPlayer> Sounds;
+        private readonly Dictionary<string, SoundPlayer> Sounds;
 
         private SoundEndine()
         {
@@ -30,6 +28,16 @@ namespace SoundKeyboard2012
                 .Select(_ => new SoundPlayer(_.FullName))
                 .ToDictionary(_ => Path.GetFileNameWithoutExtension(_.SoundLocation));
         }
+
+        public string Name
+        {
+            get
+            {
+                return Path.GetFileNameWithoutExtension(Location);
+            }
+        }
+
+        public string Location { get; private set; }
 
         public void Play(Keys keys)
         {
