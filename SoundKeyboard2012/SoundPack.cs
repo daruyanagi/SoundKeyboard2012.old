@@ -3,12 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
+using System.IO;
+using System.Xml;
+
 namespace SoundKeyboard2012
 {
     public class SoundPackList : IList<SoundPack>
     {
-        private List<SoundPack> items = null;
-        private SoundPack selected = null;
+        private List<SoundPack> mItems = null;
+        private int mSelectedIndex = -1;
 
         public event EventHandler SelectIndexChanged;
         public event EventHandler Loaded;
@@ -18,14 +21,67 @@ namespace SoundKeyboard2012
             Location = path;
         }
 
-        public void Load()
+        public void Load(string path)
         {
-            items = new System.IO.DirectoryInfo(Location)
-                .GetDirectories()
-                .Select(_ => new SoundPack(_.FullName))
-                .ToList();
+            if (File.Exists(path))
+            {
+                var doc = new XmlDocument();
+                doc.Load(path);
 
-            if (Loaded != null) Loaded(this, EventArgs.Empty);
+                mItems = doc.SelectNodes("/SoundPackList/Items/SoundPack/Location")
+                    .Cast<XmlNode>()
+                    .Select(_ => new SoundPack(_.InnerText))
+                    .ToList();
+
+                mSelectedIndex = int.Parse(
+                    doc.SelectSingleNode("/SoundPackList/SelectIndex").InnerText
+                );
+            }
+            else
+            {
+                mItems = new System.IO.DirectoryInfo(Location)
+                    .GetDirectories()
+                    .Select(_ => new SoundPack(_.FullName))
+                    .ToList();
+
+                mSelectedIndex = 0;
+            }
+
+            // event: Load -> SelectedIndexChanged
+
+            if (Loaded != null)
+                Loaded(this, EventArgs.Empty);
+
+            if (SelectIndexChanged != null)
+                SelectIndexChanged(this, EventArgs.Empty);
+        }
+
+        public void Save(string path)
+        {
+            var doc = new XmlDocument();
+
+            var sound_pack_list = doc.CreateElement("SoundPackList");
+            doc.AppendChild(sound_pack_list);
+
+            var select_index = doc.CreateElement("SelectIndex");
+            select_index.InnerText = SelectedIndex.ToString();
+            sound_pack_list.AppendChild(select_index);
+
+            var items = doc.CreateElement("Items");
+            sound_pack_list.AppendChild(items);
+
+            foreach (var item in mItems)
+            {
+                var location = doc.CreateElement("Location");
+                location.InnerText = item.Location;
+
+                var sound_pack = doc.CreateElement("SoundPack");
+                sound_pack.AppendChild(location);
+
+                items.AppendChild(sound_pack);
+            }
+
+            doc.Save(path);
         }
 
         public string Location { get; private set; }
@@ -34,13 +90,13 @@ namespace SoundKeyboard2012
         {
             get
             {
-                return items.IndexOf(selected);
+                return mSelectedIndex;
             }
             set
             {
-                if (SelectedIndex != value)
+                if (mSelectedIndex != value)
                 {
-                    selected = items[value];
+                    mSelectedIndex = value;
 
                     if (SelectIndexChanged != null)
                         SelectIndexChanged(this, EventArgs.Empty);
@@ -52,13 +108,15 @@ namespace SoundKeyboard2012
         {
             get
             {
-                return selected;
+                return mItems[mSelectedIndex];
             }
             set
             {
-                if (selected != value)
+                int index = mItems.IndexOf(value);
+
+                if (mSelectedIndex != index)
                 {
-                    selected = value;
+                    mSelectedIndex = index;
 
                     if (SelectIndexChanged != null)
                         SelectIndexChanged(this, EventArgs.Empty);
@@ -70,13 +128,15 @@ namespace SoundKeyboard2012
         {
             get
             {
-                return selected.Name;
+                return SelectedItem.Name;
             }
             set
             {
-                if (selected.Name != value)
+                if (SelectedItem.Name != value)
                 {
-                    selected = items.Find(_ => value == _.Name);
+                    var pack = mItems.Where(_ => _.Name == value).Single();
+
+                    mSelectedIndex = mItems.IndexOf(pack);
 
                     if (SelectIndexChanged != null)
                         SelectIndexChanged(this, EventArgs.Empty);
@@ -86,54 +146,54 @@ namespace SoundKeyboard2012
 
         public int IndexOf(SoundPack item)
         {
-            return items.IndexOf(item);
+            return mItems.IndexOf(item);
         }
 
         public void Insert(int index, SoundPack item)
         {
-            items.Insert(index, item);
+            mItems.Insert(index, item);
         }
 
         public void RemoveAt(int index)
         {
-            items.RemoveAt(index);
+            mItems.RemoveAt(index);
         }
 
         public SoundPack this[int index]
         {
             get
             {
-                return items[index];
+                return mItems[index];
             }
             set
             {
-                items[index] = value;
+                mItems[index] = value;
             }
         }
 
         public void Add(SoundPack item)
         {
-            items.Add(item);
+            mItems.Add(item);
         }
 
         public void Clear()
         {
-            items.Clear();
+            mItems.Clear();
         }
 
         public bool Contains(SoundPack item)
         {
-            return items.Contains(item);
+            return mItems.Contains(item);
         }
 
         public void CopyTo(SoundPack[] array, int arrayIndex)
         {
-            items.CopyTo(array, arrayIndex);
+            mItems.CopyTo(array, arrayIndex);
         }
 
         public int Count
         {
-            get { return items.Count(); }
+            get { return mItems.Count(); }
         }
 
         public bool IsReadOnly
@@ -143,20 +203,21 @@ namespace SoundKeyboard2012
 
         public bool Remove(SoundPack item)
         {
-            return items.Remove(item);
+            return mItems.Remove(item);
         }
 
         public IEnumerator<SoundPack> GetEnumerator()
         {
-            return items.GetEnumerator();
+            return mItems.GetEnumerator();
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
         {
-            return items.GetEnumerator();
+            return mItems.GetEnumerator();
         }
     }
 
+    [Serializable]
     public class SoundPack
     {
         private SoundPack()
