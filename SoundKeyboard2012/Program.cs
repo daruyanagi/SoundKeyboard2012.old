@@ -44,6 +44,8 @@ namespace SoundKeyboard2012
             MainForm.Hide();
             
             Application.Run();
+
+            mutex.ReleaseMutex();
         }
 
         public static MainForm MainForm { get; set; }

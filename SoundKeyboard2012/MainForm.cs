@@ -73,16 +73,10 @@ namespace SoundKeyboard2012
 
             AppDomain.CurrentDomain.FirstChanceException += (_sender, _e) =>
             {
-                Program.NotifyIcon.ShowBalloonTip(
-                    BALOON_TIMEOUT,
-                    Application.ProductName,
-                    string.Format(
-                        "初回例外。{0}：{1}\r\n" +
-                        "正しく初期化されなかった可能性があります",
-                        _e.Exception.Source,
-                        _e.Exception.Message),
-                    ToolTipIcon.Error
-                );
+                ShowBaloon("初回例外。{0}：{1}\r\n" +
+                    "正しく初期化されなかった可能性があります",
+                    _e.Exception.Source,
+                    _e.Exception.Message);
             };
         }
 
@@ -124,13 +118,8 @@ namespace SoundKeyboard2012
                 e.Cancel = true;
                 Hide();
 
-                Program.NotifyIcon.ShowBalloonTip(
-                    BALOON_TIMEOUT,
-                    Application.ProductName,
-                    "最小化しました。" + "\r\n" +
-                    "終了するにはタスクトレイアイコンのコンテクストメニューを利用します",
-                    ToolTipIcon.Info
-                );
+                ShowBaloon("最小化しました。" + "\r\n" +
+                    "終了するにはタスクトレイアイコンのコンテクストメニューを利用します");
             }
         }
 
@@ -149,14 +138,8 @@ namespace SoundKeyboard2012
             checkBoxShowKeyInput.Checked = KeyDisplayEnabled;
             menuItemDisplayKeyEnabled.Checked = KeyDisplayEnabled;
 
-            Program.NotifyIcon.ShowBalloonTip(
-                BALOON_TIMEOUT,
-                Application.ProductName,
-                string.Format(
-                    "入力キーの表示を {0} にしました",
-                    KeyDisplayEnabled ? "有効" : "無効"),
-                ToolTipIcon.Info
-            );
+            ShowBaloon("入力キーの表示を {0} にしました",
+                KeyDisplayEnabled ? "有効" : "無効");
         }
 
         void buttonAddSoundPack_Click(object sender, EventArgs e)
@@ -228,12 +211,7 @@ namespace SoundKeyboard2012
             mSoundEngine.DefaultSoundEnabledChanged += new EventHandler(SoundEngine_DefaultSoundEnabledChanged);
             /* mSoundEngine.LoadConfig() */
 
-            Program.NotifyIcon.ShowBalloonTip(
-                BALOON_TIMEOUT,
-                Application.ProductName,
-                string.Format("サウンドパック {0} をロードしました", mSoundEngine.Name),
-                ToolTipIcon.Info
-            );
+            ShowBaloon("サウンドパック {0} をロードしました", mSoundEngine.Name);
 
             comboBoxSoundPacks.SelectedIndex = mSoundPackList.SelectedIndex;
             labelSoundPackName.Text = mSoundPackList.SelectedName;
@@ -254,14 +232,8 @@ namespace SoundKeyboard2012
             checkBoxMute.Checked = mSoundEngine.MuteEnabled;
             menuItemIsMute.Checked = mSoundEngine.MuteEnabled;
 
-            Program.NotifyIcon.ShowBalloonTip(
-                BALOON_TIMEOUT,
-                Application.ProductName,
-                string.Format(
-                    "ミュートを {0} にしました",
-                    mSoundEngine.MuteEnabled ? "有効" : "無効"),
-                ToolTipIcon.Info
-            );
+            ShowBaloon("ミュートを {0} にしました",
+                mSoundEngine.MuteEnabled ? "有効" : "無効");
         }
 
         private void SoundEngine_DefaultSoundEnabledChanged(object sender, EventArgs e)
@@ -269,14 +241,8 @@ namespace SoundKeyboard2012
             checkBoxEnableDefaultSound.Checked = mSoundEngine.DefaultSoundEnabled;
             menuItemDefaultSoundEnabled.Checked = mSoundEngine.DefaultSoundEnabled;
 
-            Program.NotifyIcon.ShowBalloonTip(
-                BALOON_TIMEOUT,
-                Application.ProductName,
-                string.Format(
-                    "デフォルトサウンドの再生を {0} にしました",
-                    mSoundEngine.DefaultSoundEnabled ? "有効" : "無効"),
-                ToolTipIcon.Info
-            );
+            ShowBaloon("デフォルトサウンドの再生を {0} にしました",
+                mSoundEngine.DefaultSoundEnabled ? "有効" : "無効");
         }
 
         private void menuItemChangeSoundPacks_DropDownOpening(object sender, EventArgs e)
@@ -290,7 +256,7 @@ namespace SoundKeyboard2012
                     Checked = pack.ActiveIn(mSoundPackList),
                 };
 
-                item.Click += (_1, _2) =>
+                item.Click += (_sender, _e) =>
                 {
                     mSoundPackList.SelectedName = item.Text;
                 };
@@ -302,6 +268,16 @@ namespace SoundKeyboard2012
         private void linkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             System.Diagnostics.Process.Start(linkLabel1.Text);
+        }
+
+        private void ShowBaloon(string format, params string[] values)
+        {
+            Program.NotifyIcon.ShowBalloonTip(
+                BALOON_TIMEOUT,
+                Application.ProductName,
+                string.Format(format, values),
+                ToolTipIcon.Info
+            );
         }
     }
 }
