@@ -16,7 +16,7 @@ namespace SoundKeyboard2012
             InitializeComponent();
         }
 
-        private Keys mKeys;
+        #region property DisplayKeys
 
         public Keys DisplayKeys
         {
@@ -33,5 +33,8 @@ namespace SoundKeyboard2012
                 }
             }
         }
+        private Keys mKeys;
+
+        #endregion
     }
 }

@@ -6,34 +6,66 @@ using System.Text;
 using System.IO;
 using System.Media;
 using System.Windows.Forms;
+using MouseKeyboardActivityMonitor;
+using MouseKeyboardActivityMonitor.WinApi;
 
 namespace SoundKeyboard2012
 {
     public class SoundEndine : IDisposable
     {
-        private readonly Dictionary<string, SoundPlayer> Sounds;
+        private readonly Dictionary<string, SoundPlayer> mSounds;
+
+        private KeyboardHookListener mKeyboardListener = null;
+
+        public List<Keys> SilentKeys = new List<Keys>();
+
+        public event KeyEventHandler KeyDown;
+        public event KeyEventHandler KeyUp;
 
         private SoundEndine()
         {
 
         }
 
-        public SoundEndine(string path)
+        public SoundEndine(SoundPack sound_pack)
         {
-            Location = path;
+            Location = sound_pack.Location;
 
-            Sounds = new System.IO.DirectoryInfo(Location)
+            mSounds = new System.IO.DirectoryInfo(Location)
                 .EnumerateFiles()
                 .Where(_ => _.Extension == ".wav")
                 .Select(_ => new SoundPlayer(_.FullName))
                 .ToDictionary(_ => Path.GetFileNameWithoutExtension(_.SoundLocation));
+
+            mKeyboardListener = new KeyboardHookListener(new GlobalHooker())
+            {
+                Enabled = true,
+            };
+
+            mKeyboardListener.KeyDown += (_sender, _e) =>
+            {
+                if (KeyDown != null) KeyDown(_sender, _e);
+
+                Play(_e.KeyData);
+
+                /* [Control] + [Alt] + [M] -> Mute ON/OFF */
+                if (_e.KeyData == Keys.M &&
+                    Keys.Shift == (Control.ModifierKeys & Keys.Shift) &&
+                    Keys.Control == (Control.ModifierKeys & Keys.Control))
+                    MuteEnabled = !MuteEnabled;
+            };
+
+            mKeyboardListener.KeyUp += (_sender, _e) =>
+            {
+                /* Re-Allow sound in Key up */
+                if (IsModifierKey(_e.KeyData))
+                    SilentKeys.Remove(_e.KeyData);
+
+                if (KeyUp != null) KeyUp(_sender, _e);
+            };
         }
 
-        public static SoundEndine FromSoundPack(SoundPack pack)
-        {
-            return new SoundEndine(pack.Location);
-        }
-
+        #region property Name
         public string Name
         {
             get
@@ -41,10 +73,47 @@ namespace SoundKeyboard2012
                 return Path.GetFileNameWithoutExtension(Location);
             }
         }
+        #endregion
+
+        #region property DefaultSoundEnabled
+        public bool DefaultSoundEnabled
+        {
+            get { return mDefaultSoundEnabled; }
+            set
+            {
+                if (mDefaultSoundEnabled != value)
+                {
+                    mDefaultSoundEnabled = value;
+
+                    if (DefaultSoundEnabledChanged != null)
+                        DefaultSoundEnabledChanged(this, EventArgs.Empty);
+                }
+            }
+        }
+        private bool mDefaultSoundEnabled;
+        public event EventHandler DefaultSoundEnabledChanged;
+        #endregion
+
+        #region property MuteEnabled
+        public bool MuteEnabled
+        {
+            get { return mMuteEnabled; }
+            set
+            {
+                if (mMuteEnabled != value)
+                {
+                    mMuteEnabled = value;
+
+                    if (MuteEnabledChanged != null)
+                        MuteEnabledChanged(this, EventArgs.Empty);
+                }
+            }
+        }
+        private bool mMuteEnabled;
+        public event EventHandler MuteEnabledChanged;
+        #endregion
 
         public string Location { get; private set; }
-
-        public List<Keys> ObsoluteKeys = new List<Keys>();
 
         public static bool IsModifierKey(Keys key)
         {
@@ -65,22 +134,35 @@ namespace SoundKeyboard2012
 
         public void Play(Keys keys)
         {
+            if (MuteEnabled) return;
+
             var k = keys.ToString();
 
-            if (Sounds.Keys.Contains(k) && !ObsoluteKeys.Contains(keys))
+            if (mSounds.Keys.Contains(k))
             {
-                Sounds[k].Play();
+                if (!SilentKeys.Contains(keys))
+                {
+                    mSounds[k].Play();
 
-                if (IsModifierKey(keys)) ObsoluteKeys.Add(keys);
+                    if (IsModifierKey(keys)) SilentKeys.Add(keys);
+                }
+            }
+            else
+            {
+                if (DefaultSoundEnabled)
+                    mSounds["default"].Play();
             }
         }
 
         public void Dispose()
         {
-            foreach (var sound in Sounds.Values)
+            foreach (var sound in mSounds.Values)
             {
                 sound.Dispose();
             }
+
+            if (mKeyboardListener != null)
+                mKeyboardListener.Dispose();
         }
     }
 }

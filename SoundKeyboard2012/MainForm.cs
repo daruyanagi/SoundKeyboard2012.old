@@ -15,145 +15,66 @@ using System.Runtime.Serialization.Formatters.Binary;
 
 namespace SoundKeyboard2012
 {
-    [Serializable]
     public partial class MainForm : Form
     {
-        private KeyboardHookListener @keyboard_listener;
-        private bool @can_close = false;
+        private SoundPackList mSoundPackList = null;
+        private SoundEndine mSoundEngine = null;
+        private bool mCanClose = false;
 
-        private SoundPackList list;
-        private SoundEndine engine = null;
+        private readonly string mSoundPackListConfigPath;
+        private readonly string mSoundEngineConfigPath;
+        private readonly KeysDisplayForm mKeysDisplayForm;
 
-        private readonly string @setting_path;
-        private readonly KeysDisplayForm mKeysDisplayForm = new KeysDisplayForm();
+        private const int BALOON_TIMEOUT = 3000;
 
-        private event EventHandler IsMuteChanged;
-        private bool is_mute = false;
+        #region property ShowKeyInput
 
-        private bool IsMute
+        private bool KeyDisplayEnabled
         {
-            get { return is_mute; }
+            get { return mKeysDisplayForm.Visible; }
             set
             {
-                if (IsMute != value)
+                if (mKeysDisplayForm.Visible != value)
                 {
-                    is_mute = value;
+                    mKeysDisplayForm.Visible = value;
 
-                    if (IsMuteChanged != null)
-                        IsMuteChanged(this, EventArgs.Empty);
+                    if (KeyDisplayEnabledChanged != null)
+                        KeyDisplayEnabledChanged(this, EventArgs.Empty);
                 }
             }
         }
+        private event EventHandler KeyDisplayEnabledChanged;
 
-        private event EventHandler EnableDefaultSoundChanged;
-        private bool mEnableDefaultSound = false;
-
-        private bool EnableDefaultSound
-        {
-            get { return mEnableDefaultSound; }
-            set
-            {
-                if (mEnableDefaultSound != value)
-                {
-                    mEnableDefaultSound = value;
-
-                    if (EnableDefaultSoundChanged != null)
-                        EnableDefaultSoundChanged(this, EventArgs.Empty);
-                }
-            }
-        }
-
-        private event EventHandler ShowKeyInputChanged;
-        private bool mShowKeyInput = true;
-
-        private bool ShowKeyInput
-        {
-            get { return mShowKeyInput; }
-            set
-            {
-                if (mShowKeyInput != value)
-                {
-                    mShowKeyInput = value;
-
-                    if (ShowKeyInputChanged != null)
-                        ShowKeyInputChanged(this, EventArgs.Empty);
-                }
-            }
-        }
-
-        private const int BaloonTimeout = 3000;
+        #endregion
 
         public MainForm()
         {
             InitializeComponent();
 
-            // 01. Get/Create Path for Saving Setting File
+            // 01. Initialize readonly members
 
-            @setting_path = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            var config_dir = Path.Combine(
+                Environment.GetFolderPath(
+                Environment.SpecialFolder.ApplicationData),
                 Application.ProductName
             );
+            if (!Directory.Exists(config_dir)) Directory.CreateDirectory(config_dir);
 
-            if (!Directory.Exists(@setting_path))
-                Directory.CreateDirectory(@setting_path);
-            
-            @setting_path = Path.Combine(@setting_path, "Settings.config");
+            mSoundPackListConfigPath = Path.Combine(config_dir, "SoundPackList.config");
+            mSoundEngineConfigPath = Path.Combine(config_dir, "SoundEngine.config");
+            mKeysDisplayForm = new KeysDisplayForm();
 
             // 02. Parepare events for MainForm
 
             Load += new EventHandler(MainForm_Load);
             FormClosed += new FormClosedEventHandler(MainForm_FormClosed);
             FormClosing += new FormClosingEventHandler(MainForm_FormClosing);
-
-            IsMuteChanged += (_sender, _e) =>
-            {
-                menuItemIsMute.Checked = IsMute;
-                checkBoxMute.Checked = IsMute;
-
-                notifyIcon.ShowBalloonTip(
-                    BaloonTimeout,
-                    Application.ProductName,
-                    string.Format(
-                        "ミュートを {0} にしました",
-                        IsMute ? "有効" : "無効"),
-                    ToolTipIcon.Info
-                );
-            };
-
-            EnableDefaultSoundChanged += (_sender, _e) =>
-            {
-                checkBoxEnableDefaultSound.Checked = EnableDefaultSound;
-                /* engine.EnableDefaultSound = EnableDefaultSound */
-
-                notifyIcon.ShowBalloonTip(
-                    BaloonTimeout,
-                    Application.ProductName,
-                    string.Format(
-                        "デフォルトサウンドの再生を {0} にしました",
-                        EnableDefaultSound ? "有効" : "無効"),
-                    ToolTipIcon.Info
-                );
-            };
-
-            ShowKeyInputChanged += (_sender, _e) =>
-            {
-                checkBoxShowKeyInput.Checked = ShowKeyInput;
-                mKeysDisplayForm.Visible = ShowKeyInput;
-
-                notifyIcon.ShowBalloonTip(
-                    BaloonTimeout,
-                    Application.ProductName,
-                    string.Format(
-                        "入力キーの表示を {0} にしました",
-                        ShowKeyInput ? "有効" : "無効"),
-                    ToolTipIcon.Info
-                );
-            };
+            KeyDisplayEnabledChanged += new EventHandler(MainForm_KeyDisplayEnabledChanged);
 
             AppDomain.CurrentDomain.FirstChanceException += (_sender, _e) =>
             {
-                notifyIcon.ShowBalloonTip(
-                    BaloonTimeout,
+                Program.NotifyIcon.ShowBalloonTip(
+                    BALOON_TIMEOUT,
                     Application.ProductName,
                     string.Format(
                         "初回例外。{0}：{1}\r\n" +
@@ -167,161 +88,34 @@ namespace SoundKeyboard2012
 
         void MainForm_Load(object sender, EventArgs e)
         {
+            // 01. Initialization on loaded
+
             labelProductName.Text = Application.ProductName;
-            labelCopyright.Text = Application.CompanyName;
-            labelVersion.Text = Application.ProductVersion;
+            labelVersion.Text = Program.GetVersion();
+            labelCopyright.Text = string.Format(
+                "Copyright {0} 2012", Application.CompanyName);
+            pictureBox1.Image = new Icon("SoundKeyboard.ico", 128, 128).ToBitmap();
 
-            // 01. NotifyIcon Initialization
+            Program.NotifyIcon.Text = Application.ProductName;
+            Program.NotifyIcon.ContextMenuStrip = contextMenuStrip;
 
-            notifyIcon.Text = Application.ProductName;
+            KeyDisplayEnabled = true;
 
-            menuItemSettings.Click += (_sender, _e) =>
-            {
-                WindowState = FormWindowState.Normal;
-                Show();
-            };
+            // 02. Load SoundPack List & SoundEngine
 
-            menuItemIsMute.Click += (_sender, _e) =>
-            {
-                IsMute = !IsMute;
-            };
-
-            checkBoxMute.Click += (_sender, _e) =>
-            {
-                IsMute = checkBoxMute.Checked;
-            };
-
-            checkBoxEnableDefaultSound.Click += (_sender, _e) =>
-            {
-                EnableDefaultSound = checkBoxEnableDefaultSound.Checked;
-            };
-
-            checkBoxShowKeyInput.Click += (_sender, _e) =>
-            {
-                ShowKeyInput = checkBoxShowKeyInput.Checked;
-            };
-
-            menuItemExit.Click += (_sender, _e) =>
-            {
-                @can_close = true; Close();
-            };
-
-            buttonMinimize.Click += (_sender, _e) =>
-            {
-                Close();
-            };
-
-            buttonExit.Click += (_sender, _e) =>
-            {
-                @can_close = true; Close();
-            };
-
-            buttonAddSoundPack.Click += (_sender, _e) =>
-            {
-                using (var dialog = new FolderBrowserDialog())
-                {
-                    if (dialog.ShowDialog() == DialogResult.OK)
-                    {
-                        list.Add(new SoundPack(dialog.SelectedPath));
-                        list.Save(setting_path);
-                        list.Load(setting_path);
-                    }
-                }
-            };
-
-            buttonDeleteSoundPack.Click += (_sender, _e) =>
-            {
-                list.RemoveAt(comboBoxSoundPacks.SelectedIndex);
-                list.Save(setting_path);
-                list.Load(setting_path);
-            };
-
-            // 02. Prepare Event for Combobox & Reload Button
-
-            comboBoxSoundPacks.SelectedIndexChanged += (_sebder, _e) =>
-            {
-                @list.SelectedIndex = comboBoxSoundPacks.SelectedIndex;
-            };
-
-            buttonReloadSoundPacks.Click += (_sebder, _e) =>
-            {
-                @list.Load(@setting_path);
-            };
-
-            // 03. Load SoundPack List & SoundEngine
-
-            @list = new SoundPackList(
+            mSoundPackList = new SoundPackList(
                 Path.Combine(Application.StartupPath, "Sounds")
             );
+            mSoundPackList.Loaded += new EventHandler(SoundPackList_Loaded);
+            mSoundPackList.SelectIndexChanged += new EventHandler(SoundPackList_SelectIndexChanged);
+            mSoundPackList.Load(mSoundPackListConfigPath);
 
-            @list.Loaded += (_sender, _e) =>
-            {
-                comboBoxSoundPacks.DataSource = @list.Select(_ => _.Name).ToList();
-
-                menuItemChangeSoundPacks.DropDown = new ToolStripDropDown();
-
-                foreach (var pack in @list)
-                {
-                    var item = menuItemChangeSoundPacks.DropDown.Items.Add(pack.Name);
-
-                    item.Click += (_1, _2) =>
-                    {
-                        @list.SelectedName = item.Text;
-                    };
-                }
-            };
-
-            @list.SelectIndexChanged += (_sender, _e) =>
-            {
-                if (@engine != null) @engine.Dispose();
-
-                @engine = SoundEndine.FromSoundPack(@list.SelectedItem);
-
-                notifyIcon.ShowBalloonTip(
-                    BaloonTimeout,
-                    Application.ProductName,
-                    string.Format("サウンドパック {0} をロードしました", engine.Name),
-                    ToolTipIcon.Info
-                );
-
-                comboBoxSoundPacks.SelectedIndex = @list.SelectedIndex;
-                label1.Text = list.SelectedName;
-            };
-
-            @list.Load(@setting_path);
-
-            // 04. Keyboard Listener Initialization
-
-            @keyboard_listener = new KeyboardHookListener(new GlobalHooker())
-            {
-                Enabled = true,
-            };
-
-            mKeysDisplayForm.Show();
-
-            @keyboard_listener.KeyDown += (_sender, _e) =>
-            {
-                mKeysDisplayForm.DisplayKeys = _e.KeyData;
-
-                if (!IsMute) @engine.Play(_e.KeyData);
-
-                if (_e.KeyData == Keys.M &&
-                    Keys.Shift == (Control.ModifierKeys & Keys.Shift) &&
-                    Keys.Control == (Control.ModifierKeys & Keys.Control))
-                    IsMute = !IsMute;
-            };
-
-            @keyboard_listener.KeyUp += (_sender, _e) =>
-            {
-                /* On Modifier Key */
-                if (SoundEndine.IsModifierKey(_e.KeyData))
-                    @engine.ObsoluteKeys.Remove(_e.KeyData);
-            };
+            Visible = false;
         }
 
         void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (@can_close)
+            if (mCanClose)
             {
                 e.Cancel = false; /* only called from menu */
             }
@@ -330,8 +124,8 @@ namespace SoundKeyboard2012
                 e.Cancel = true;
                 Hide();
 
-                notifyIcon.ShowBalloonTip(
-                    BaloonTimeout,
+                Program.NotifyIcon.ShowBalloonTip(
+                    BALOON_TIMEOUT,
                     Application.ProductName,
                     "最小化しました。" + "\r\n" +
                     "終了するにはタスクトレイアイコンのコンテクストメニューを利用します",
@@ -342,10 +136,172 @@ namespace SoundKeyboard2012
 
         void MainForm_FormClosed(object sender, FormClosedEventArgs e)
         {
-            if (@keyboard_listener != null)
-                @keyboard_listener.Dispose();
+            if (mSoundEngine != null)
+                mSoundEngine.Dispose();
 
-            list.Save(@setting_path);
+            mSoundPackList.Save(mSoundPackListConfigPath);
+
+            Application.Exit();
+        }
+
+        void MainForm_KeyDisplayEnabledChanged(object sender, EventArgs e)
+        {
+            checkBoxShowKeyInput.Checked = KeyDisplayEnabled;
+            menuItemDisplayKeyEnabled.Checked = KeyDisplayEnabled;
+
+            Program.NotifyIcon.ShowBalloonTip(
+                BALOON_TIMEOUT,
+                Application.ProductName,
+                string.Format(
+                    "入力キーの表示を {0} にしました",
+                    KeyDisplayEnabled ? "有効" : "無効"),
+                ToolTipIcon.Info
+            );
+        }
+
+        void buttonAddSoundPack_Click(object sender, EventArgs e)
+        {
+            using (var dialog = new FolderBrowserDialog())
+            {
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    mSoundPackList.Add(new SoundPack(dialog.SelectedPath));
+                    mSoundPackList.Save(mSoundPackListConfigPath);
+                    mSoundPackList.Load(mSoundPackListConfigPath);
+                }
+            }
+        }
+
+        void buttonDeleteSoundPack_Click(object sender, EventArgs e)
+        {
+            mSoundPackList.RemoveAt(comboBoxSoundPacks.SelectedIndex);
+            mSoundPackList.Save(mSoundPackListConfigPath);
+            mSoundPackList.Load(mSoundPackListConfigPath);
+        }
+
+        void ToggleKeyDisplayEnabled(object sender, EventArgs e)
+        {
+            KeyDisplayEnabled = !KeyDisplayEnabled;
+        }
+
+        void ToggleDefaultSoundEnabled(object sender, EventArgs e)
+        {
+            mSoundEngine.DefaultSoundEnabled = !mSoundEngine.DefaultSoundEnabled;
+        }
+
+        void ToggleMuteEnabled(object sender, EventArgs e)
+        {
+            mSoundEngine.MuteEnabled = !mSoundEngine.MuteEnabled;
+        }
+
+        void ToggleSettingsWindowVisible(object sender, EventArgs e)
+        {
+            Visible = !Visible;
+
+            if (WindowState != FormWindowState.Normal) /* for first shown */
+                WindowState = FormWindowState.Normal;
+        }
+
+        void Minimize(object sender, EventArgs e)
+        {
+            Close();
+        }
+
+        void ForceExit(object sender, EventArgs e)
+        {
+            mCanClose = true; Close();
+        }
+
+        void SoundPackList_Loaded(object sender, EventArgs e)
+        {
+            comboBoxSoundPacks.DataSource = mSoundPackList.Select(_ => _.Name).ToList();
+        }
+
+        void SoundPackList_SelectIndexChanged(object sender, EventArgs e)
+        {
+            if (mSoundEngine != null) mSoundEngine.Dispose();
+
+            mSoundEngine = new SoundEndine(mSoundPackList.SelectedItem);
+            mSoundEngine.KeyUp += new KeyEventHandler(SoundEngine_KeyUp);
+            mSoundEngine.KeyDown += new KeyEventHandler(SoundEngine_KeyDown);
+            mSoundEngine.MuteEnabledChanged += new EventHandler(SoundEngine_MuteEnabledChanged);
+            mSoundEngine.DefaultSoundEnabledChanged += new EventHandler(SoundEngine_DefaultSoundEnabledChanged);
+            /* mSoundEngine.LoadConfig() */
+
+            Program.NotifyIcon.ShowBalloonTip(
+                BALOON_TIMEOUT,
+                Application.ProductName,
+                string.Format("サウンドパック {0} をロードしました", mSoundEngine.Name),
+                ToolTipIcon.Info
+            );
+
+            comboBoxSoundPacks.SelectedIndex = mSoundPackList.SelectedIndex;
+            labelSoundPackName.Text = mSoundPackList.SelectedName;
+        }
+
+        private void SoundEngine_KeyUp(object sender, KeyEventArgs e)
+        {
+
+        }
+
+        private void SoundEngine_KeyDown(object sender, KeyEventArgs e)
+        {
+            mKeysDisplayForm.DisplayKeys = e.KeyData;
+        }
+
+        private void SoundEngine_MuteEnabledChanged(object sender, EventArgs e)
+        {
+            checkBoxMute.Checked = mSoundEngine.MuteEnabled;
+            menuItemIsMute.Checked = mSoundEngine.MuteEnabled;
+
+            Program.NotifyIcon.ShowBalloonTip(
+                BALOON_TIMEOUT,
+                Application.ProductName,
+                string.Format(
+                    "ミュートを {0} にしました",
+                    mSoundEngine.MuteEnabled ? "有効" : "無効"),
+                ToolTipIcon.Info
+            );
+        }
+
+        private void SoundEngine_DefaultSoundEnabledChanged(object sender, EventArgs e)
+        {
+            checkBoxEnableDefaultSound.Checked = mSoundEngine.DefaultSoundEnabled;
+            menuItemDefaultSoundEnabled.Checked = mSoundEngine.DefaultSoundEnabled;
+
+            Program.NotifyIcon.ShowBalloonTip(
+                BALOON_TIMEOUT,
+                Application.ProductName,
+                string.Format(
+                    "デフォルトサウンドの再生を {0} にしました",
+                    mSoundEngine.DefaultSoundEnabled ? "有効" : "無効"),
+                ToolTipIcon.Info
+            );
+        }
+
+        private void menuItemChangeSoundPacks_DropDownOpening(object sender, EventArgs e)
+        {
+            menuItemChangeSoundPacks.DropDown.Items.Clear();
+
+            foreach (var pack in mSoundPackList)
+            {
+                var item = new ToolStripMenuItem(pack.Name)
+                {
+                    Checked = pack.ActiveIn(mSoundPackList),
+                };
+
+                item.Click += (_1, _2) =>
+                {
+                    mSoundPackList.SelectedName = item.Text;
+                };
+
+                menuItemChangeSoundPacks.DropDown.Items.Add(item);
+            }
+        }
+
+        private void linkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            System.Diagnostics.Process.Start(linkLabel1.Text);
         }
     }
 }

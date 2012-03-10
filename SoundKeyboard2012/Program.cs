@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows.Forms;
 
 using System.Threading;
+using System.Deployment.Application;
 
 namespace SoundKeyboard2012
 {
@@ -32,7 +33,30 @@ namespace SoundKeyboard2012
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MainForm());
+
+            NotifyIcon = new System.Windows.Forms.NotifyIcon();
+            NotifyIcon.Icon = new System.Drawing.Icon("SoundKeyboard.ico");
+            NotifyIcon.Visible = true;
+
+            MainForm = new MainForm();
+            MainForm.WindowState = FormWindowState.Minimized;
+            MainForm.Show(); /* for initialize, once show. */
+            MainForm.Hide();
+            
+            Application.Run();
+        }
+
+        public static MainForm MainForm { get; set; }
+        public static NotifyIcon NotifyIcon { get; set; }
+
+        public static string GetVersion()
+        {
+            if (!ApplicationDeployment.IsNetworkDeployed)
+                return "ポータブルバージョン";
+            
+            Version v = ApplicationDeployment.CurrentDeployment.CurrentVersion;
+            return string.Format("ネットワークインストールバージョン：{0}.{1}.{2}.{3}",
+                v.Major, v.Minor, v.Build, v.Revision);
         }
     }
 }
