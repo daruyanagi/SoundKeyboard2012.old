@@ -10,6 +10,8 @@ namespace SoundKeyboard2012
 {
     static class Program
     {
+        private static Mutex mMutex = null;
+
         /// <summary>
         /// アプリケーションのメイン エントリ ポイントです。
         /// </summary>
@@ -18,10 +20,10 @@ namespace SoundKeyboard2012
         {
             var application_id = "SoundKeyboard 2012";
 
-            bool createdNew;
-            Mutex mutex = new Mutex(true, application_id, out createdNew);
+            bool created_new;
+            mMutex = new Mutex(true, application_id, out created_new);
 
-            if (createdNew == false)
+            if (created_new == false)
             {
                 MessageBox.Show(
                     "二重起動しようとしました。このアプリケーションは終了します。",
@@ -45,7 +47,7 @@ namespace SoundKeyboard2012
             
             Application.Run();
 
-            mutex.ReleaseMutex();
+            mMutex.ReleaseMutex();
         }
 
         public static MainForm MainForm { get; set; }

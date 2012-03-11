@@ -15,7 +15,9 @@ namespace SoundKeyboard2012
     {
         private readonly Dictionary<string, SoundPlayer> mSounds;
 
+        private GlobalHooker mGlobalHooker = new GlobalHooker();
         private KeyboardHookListener mKeyboardListener = null;
+        private Timer mTimer = null;
 
         public List<Keys> SilentKeys = new List<Keys>();
 
@@ -37,7 +39,26 @@ namespace SoundKeyboard2012
                 .Select(_ => new SoundPlayer(_.FullName))
                 .ToDictionary(_ => Path.GetFileNameWithoutExtension(_.SoundLocation));
 
-            mKeyboardListener = new KeyboardHookListener(new GlobalHooker())
+            mTimer = new Timer();
+
+            mTimer.Tick += (_sender, _e) =>
+            {
+                if (mKeyboardListener == null ||
+                    mKeyboardListener.Enabled == false)
+                {
+                    InitializaKeyboardListner();
+                    System.Diagnostics.Debug.WriteLine(
+                        "(Re)start keyboard listner: {0}", DateTime.Now);
+                }
+            };
+
+            mTimer.Interval = 60 * 1000;
+            mTimer.Start();
+        }
+
+        private void InitializaKeyboardListner()
+        {
+            mKeyboardListener = new KeyboardHookListener(mGlobalHooker)
             {
                 Enabled = true,
             };
