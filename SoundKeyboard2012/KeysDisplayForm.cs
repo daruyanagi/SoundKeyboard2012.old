@@ -7,6 +7,8 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 
+using System.Security.Permissions;
+
 namespace SoundKeyboard2012
 {
     public partial class KeysDisplayForm : Form
@@ -14,6 +16,20 @@ namespace SoundKeyboard2012
         public KeysDisplayForm()
         {
             InitializeComponent();
+        }
+
+        protected override void WndProc(ref Message message)
+        {
+            const int WM_ENDSESSION = 0x16;
+
+            switch (message.Msg)
+            {
+                case WM_ENDSESSION:
+                    Close();
+                    break;
+            }
+
+            base.WndProc(ref message);
         }
 
         #region property DisplayKeys
